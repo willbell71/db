@@ -1,13 +1,15 @@
 {
   "name": "@willbell71/db",
-  "version": "1.0.0",
+  "version": "1.0.1",
   "description": "",
   "main": "lib/index.js",
   "types": "lib/index.d.ts",
   "jest": {
     "preset": "ts-jest"
   },
-  "files": ["lib/**/*"],
+  "files": [
+    "lib/**/*"
+  ],
   "scripts": {
     "test": "jest ./src --verbose --coverage",
     "test:watch": "jest ./src --verbose --coverage --watch",
@@ -32,7 +34,6 @@
   "homepage": "https://github.com/willbell71/db#readme",
   "devDependencies": {
     "@types/jest": "^24.0.24",
-    "@types/mongoose": "^5.5.35",
     "@types/node": "^13.1.0",
     "@typescript-eslint/eslint-plugin": "^2.13.0",
     "@typescript-eslint/parser": "^2.13.0",
@@ -42,6 +43,7 @@
     "typescript": "^3.7.4"
   },
   "dependencies": {
+    "@types/mongoose": "^5.5.35",
     "@willbell71/factory": "^1.0.0",
     "@willbell71/logger": "^1.0.3",
     "@willbell71/shutdown": "^1.0.0",
