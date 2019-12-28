@@ -1,3 +1,4 @@
-import * as mongoose from 'mongoose';
+import { Schema } from 'mongoose';
 
-export type TMongoDBSchemaObjectId = mongoose.Schema.Types.ObjectId;
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
+export const TMongoDBSchemaObjectId: any = Schema.Types.ObjectId;
