@@ -62,4 +62,13 @@ export interface IDBService {
    * @return {Promise<DBServiceEntity>} entity fetched.
    */
   fetch: (entityType: string, propName: string, value: TDBServiceValue) => Promise<TDBServiceEntity>;
+
+  /**
+   * Fetch all entities of type that match a query, if no query then return all.
+   * @param {string} entityType - entity type to fetch.
+   * @param {string} [propName] - name of property to search on.
+   * @param {DBServiceValue} [value] - value to find.
+   * @return {Promise<DBServiceEntity[]>} entities fetched.
+   */
+  fetchAll: (entityType: string, propName?: string, value?: TDBServiceValue) => Promise<TDBServiceEntity[]>;
 }

@@ -203,4 +203,31 @@ export class MongoDBService implements IDBService {
       throw (new Error('Mappings not set, connection must be called with a schema for this entity'));
     }
   }
+
+  /**
+   * Fetch all entities of type that match a query, if no query then return all.
+   * @param {string} entityType - entity type to fetch.
+   * @param {string} [propName] - name of property to search on.
+   * @param {DBServiceValue} [value] - value to find.
+   * @return {Promise<DBServiceEntity[]>} entity fetched.
+   */
+  public async fetchAll(entityType: string, propName?: string, value?: TDBServiceValue): Promise<TDBServiceEntity[]> {
+    if (this.mappings) {
+      // get model from mongoose mappings
+      const model: EntityMapping = this.mappings[entityType];
+      if (model) {
+        const entityModel: mongoose.Model<EntityModel> = model.model;
+
+        if (propName) {
+          return await entityModel.find({[propName]: value});
+        } else {
+          return await entityModel.find();
+        }
+      } else {
+        throw (new Error('Model doesnt exist'));
+      }
+    } else {
+      throw (new Error('Mappings not set, connection must be called with a schema for this entity'));
+    }
+  }
 }
