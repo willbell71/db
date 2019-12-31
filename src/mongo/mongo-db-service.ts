@@ -230,4 +230,14 @@ export class MongoDBService implements IDBService {
       throw (new Error('Mappings not set, connection must be called with a schema for this entity'));
     }
   }
+
+  /**
+   * Remove an entity from the db.
+   * @param {TDBServiceEntity} entity - entity to remove.
+   * @return {Promise<boolean>} success.
+   */
+  public async remove(entity: TDBServiceEntity): Promise<boolean> {
+    await entity.remove();
+    return true;
+  }
 }

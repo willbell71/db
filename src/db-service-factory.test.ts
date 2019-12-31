@@ -28,6 +28,8 @@ class DBTestService implements IDBService {
   public fetchAll(entityType: string, propName?: string, value?: TDBServiceValue): Promise<TDBServiceEntity[]> {
     return new Promise<TDBServiceEntity[]>((): void => {});
   }
+  // eslint-disable-next-line @typescript-eslint/no-unused-vars
+  public remove(entity: TDBServiceEntity): Promise<boolean> { return new Promise<boolean>((): void => {}); }
 }
 
 let logLineSpy: jest.Mock;

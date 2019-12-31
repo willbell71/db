@@ -71,4 +71,11 @@ export interface IDBService {
    * @return {Promise<DBServiceEntity[]>} entities fetched.
    */
   fetchAll: (entityType: string, propName?: string, value?: TDBServiceValue) => Promise<TDBServiceEntity[]>;
+
+  /**
+   * Remove a given entity from the db.
+   * @param {DBServiceEntity} entity - entity to remove.
+   * @return {Promise<boolean>} success.
+   */
+  remove: (entity: TDBServiceEntity) => Promise<boolean>;
 }
