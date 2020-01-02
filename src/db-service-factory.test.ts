@@ -28,6 +28,20 @@ class DBTestService implements IDBService {
   public fetchAll(entityType: string, propName?: string, value?: TDBServiceValue): Promise<TDBServiceEntity[]> {
     return new Promise<TDBServiceEntity[]>((): void => {});
   }
+  public findAll(
+    // eslint-disable-next-line @typescript-eslint/no-unused-vars
+    entityType: string,
+    // eslint-disable-next-line @typescript-eslint/no-unused-vars
+    search?: {[key: string]: string | RegExp | number | {lt?: number; gt?: number}},
+    // eslint-disable-next-line @typescript-eslint/no-unused-vars
+    sort?: {[key: string]: number},
+    // eslint-disable-next-line @typescript-eslint/no-unused-vars
+    start?: number,
+    // eslint-disable-next-line @typescript-eslint/no-unused-vars
+    limit?: number): Promise<TDBServiceEntity[]> {
+    return new Promise<TDBServiceEntity[]>((): void => {});
+  }
+
   // eslint-disable-next-line @typescript-eslint/no-unused-vars
   public remove(entity: TDBServiceEntity): Promise<boolean> { return new Promise<boolean>((): void => {}); }
 }

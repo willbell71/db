@@ -73,6 +73,22 @@ export interface IDBService {
   fetchAll: (entityType: string, propName?: string, value?: TDBServiceValue) => Promise<TDBServiceEntity[]>;
 
   /**
+   * Find all entities of type that match a query, if no query then return all.
+   * @param {string} entityType - entity type to fetch.
+   * @param {{[key: string]: string | RegExp | number | {lt?: number; gt?: number}}} [search] - search criteria.
+   * @param {{[key: string]: number}} [sort] - sort field and direction.
+   * @param {number} [start] - search results offset.
+   * @param {number} [limit] - search results offset.
+   */
+  findAll: (
+    entityType: string,
+    search?: {[key: string]: string | RegExp | number | {lt?: number; gt?: number}},
+    sort?: {[key: string]: number},
+    start?: number,
+    limit?: number
+  ) => Promise<TDBServiceEntity[]>;
+
+  /**
    * Remove a given entity from the db.
    * @param {DBServiceEntity} entity - entity to remove.
    * @return {Promise<boolean>} success.

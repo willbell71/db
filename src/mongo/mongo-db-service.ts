@@ -231,6 +231,66 @@ export class MongoDBService implements IDBService {
     }
   }
 
+
+  /**
+   * Find all entities of type that match a query, if no query then return all.
+   * @param {string} entityType - entity type to fetch.
+   * @param {{[key: string]: string | RegExp | number | {lt?: number; gt?: number}}} [search] - search criteria.
+   * @param {{[key: string]: number}} [sort] - sort field and direction.
+   * @param {number} [start] - search results offset.
+   * @param {number} [limit] - search results offset.
+   */
+  public async findAll(
+    entityType: string,
+    search?: {[key: string]: string | RegExp | number | {lt?: number; gt?: number}},
+    sort?: {[key: string]: number},
+    start?: number,
+    limit?: number
+  ): Promise<TDBServiceEntity[]> {
+    if (this.mappings) {
+      // get model from mongoose mappings
+      const model: EntityMapping = this.mappings[entityType];
+      if (model) {
+        const entityModel: mongoose.Model<EntityModel> = model.model;
+
+        // parse search and convert to Mongoose syntax - lt -> $lt etc.
+        const parsedSearch: {[key: string]: number | string | RegExp | {$gt?: number; $lt?: number}} = {};
+        for (const prop in search) {
+          if (search.hasOwnProperty(prop)) {
+            if (typeof search[prop] === 'string' || typeof search[prop] === 'number' || search[prop] instanceof RegExp) {
+              parsedSearch[prop] = search[prop] as string | number | RegExp;
+            } else {
+              const value: {$gt?: number; $lt?: number} = {};
+              if ((search[prop] as {gt?: number}).gt) {
+                value.$gt = (search[prop] as {gt?: number}).gt;
+              }
+              if ((search[prop] as {lt?: number}).lt) {
+                value.$lt = (search[prop] as {lt?: number}).lt;
+              }
+              parsedSearch[prop] = value;
+            }
+          }
+        }
+
+        const query: mongoose.DocumentQuery<{}[], mongoose.Document> = entityModel.find(parsedSearch);
+        if (sort) {
+          query.sort(sort);
+        }
+        if (start) {
+          query.skip(start);
+        }
+        if (limit) {
+          query.limit(limit);
+        }
+        return await query.exec();
+      } else {
+        throw (new Error('Model doesnt exist'));
+      }
+    } else {
+      throw (new Error('Mappings not set, connection must be called with a schema for this entity'));
+    }
+  }
+
   /**
    * Remove an entity from the db.
    * @param {TDBServiceEntity} entity - entity to remove.
