@@ -32,7 +32,7 @@ class DBTestService implements IDBService {
     // eslint-disable-next-line @typescript-eslint/no-unused-vars
     entityType: string,
     // eslint-disable-next-line @typescript-eslint/no-unused-vars
-    search?: {[key: string]: string | RegExp | number | {lt?: number; gt?: number}},
+    search?: {[key: string]: string | RegExp | number | undefined | {lt?: number; gt?: number}},
     // eslint-disable-next-line @typescript-eslint/no-unused-vars
     sort?: {[key: string]: number},
     // eslint-disable-next-line @typescript-eslint/no-unused-vars

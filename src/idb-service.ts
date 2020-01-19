@@ -75,14 +75,14 @@ export interface IDBService {
   /**
    * Find all entities of type that match a query, if no query then return all.
    * @param {string} entityType - entity type to fetch.
-   * @param {{[key: string]: string | RegExp | number | {lt?: number; gt?: number}}} [search] - search criteria.
+   * @param {{[key: string]: string | RegExp | number | undefined | {lt?: number; gt?: number}}} [search] - search criteria.
    * @param {{[key: string]: number}} [sort] - sort field and direction.
    * @param {number} [start] - search results offset.
    * @param {number} [limit] - search results offset.
    */
   findAll: (
     entityType: string,
-    search?: {[key: string]: string | RegExp | number | {lt?: number; gt?: number}},
+    search?: {[key: string]: string | RegExp | number | undefined | {lt?: number; gt?: number}},
     sort?: {[key: string]: number},
     start?: number,
     limit?: number

@@ -231,18 +231,17 @@ export class MongoDBService implements IDBService {
     }
   }
 
-
   /**
    * Find all entities of type that match a query, if no query then return all.
    * @param {string} entityType - entity type to fetch.
-   * @param {{[key: string]: string | RegExp | number | {lt?: number; gt?: number}}} [search] - search criteria.
+   * @param {{[key: string]: string | RegExp | number | undefined | {lt?: number; gt?: number}}} [search] - search criteria.
    * @param {{[key: string]: number}} [sort] - sort field and direction.
    * @param {number} [start] - search results offset.
    * @param {number} [limit] - search results offset.
    */
   public async findAll(
     entityType: string,
-    search?: {[key: string]: string | RegExp | number | {lt?: number; gt?: number}},
+    search?: {[key: string]: string | RegExp | number | undefined | {lt?: number; gt?: number}},
     sort?: {[key: string]: number},
     start?: number,
     limit?: number
@@ -256,30 +255,34 @@ export class MongoDBService implements IDBService {
         // parse search and convert to Mongoose syntax - lt -> $lt etc.
         const parsedSearch: {[key: string]: number | string | RegExp | {$gt?: number; $lt?: number}} = {};
         for (const prop in search) {
-          if (search.hasOwnProperty(prop)) {
-            if (typeof search[prop] === 'string' || typeof search[prop] === 'number' || search[prop] instanceof RegExp) {
-              parsedSearch[prop] = search[prop] as string | number | RegExp;
-            } else {
-              const value: {$gt?: number; $lt?: number} = {};
-              if ((search[prop] as {gt?: number}).gt) {
-                value.$gt = (search[prop] as {gt?: number}).gt;
-              }
-              if ((search[prop] as {lt?: number}).lt) {
-                value.$lt = (search[prop] as {lt?: number}).lt;
-              }
-              parsedSearch[prop] = value;
+          if (undefined === search[prop]) {}
+          else if (typeof search[prop] === 'string' || typeof search[prop] === 'number' || search[prop] instanceof RegExp) {
+            parsedSearch[prop] = search[prop] as string | number | RegExp;
+          } else {
+            const value: {$gt?: number; $lt?: number} = {};
+            if ((search[prop] as {gt?: number}).gt) {
+              value.$gt = (search[prop] as {gt?: number}).gt;
             }
+            if ((search[prop] as {lt?: number}).lt) {
+              value.$lt = (search[prop] as {lt?: number}).lt;
+            }
+            parsedSearch[prop] = value;
           }
         }
 
+        this.logger!.debug('MongoDBService findAll', `Performing search for - ${JSON.stringify(parsedSearch)}`);
+
         const query: mongoose.DocumentQuery<{}[], mongoose.Document> = entityModel.find(parsedSearch);
         if (sort) {
+          this.logger!.debug('MongoDBService findAll', `sorting - ${JSON.stringify(sort)}`);
           query.sort(sort);
         }
         if (start) {
+          this.logger!.debug('MongoDBService findAll', `skipping - ${start}`);
           query.skip(start);
         }
         if (limit) {
+          this.logger!.debug('MongoDBService findAll', `limiting - ${limit}`);
           query.limit(limit);
         }
         return await query.exec();
