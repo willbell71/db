@@ -27,9 +27,10 @@ export interface IDBService {
   /**
    * Create a new instance of an entity type.
    * @param {string} entityType - entity type to create.
+   * @param {Record<string, unknown>} values - model initial values.
    * @return {Promise<DBServiceEntity>} new entity instance.
    */
-  create: (entityType: string) => Promise<TDBServiceEntity>;
+  create: (entityType: string, values: Record<string, unknown>) => Promise<TDBServiceEntity>;
 
   /**s
    * Set a property value on a given entity.

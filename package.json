@@ -1,6 +1,6 @@
 {
   "name": "@willbell71/db",
-  "version": "1.0.13",
+  "version": "1.0.14",
   "description": "",
   "main": "lib/index.js",
   "types": "lib/index.d.ts",
@@ -44,10 +44,13 @@
   },
   "dependencies": {
     "@types/mongoose": "^5.5.35",
+    "@types/sequelize": "^4.28.9",
     "@willbell71/factory": "^1.0.0",
     "@willbell71/logger": "^1.0.3",
     "@willbell71/shutdown": "^1.0.0",
     "mongoose": "^5.8.3",
-    "saslprep": "^1.0.3"
+    "mysql2": "^2.2.5",
+    "saslprep": "^1.0.3",
+    "sequelize": "^6.5.1"
   }
 }
