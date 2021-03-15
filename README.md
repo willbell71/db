@@ -2,9 +2,17 @@
 
 This package offers a common interface for sequelize and mongoose.
 
+## Build
+
+>`npm run build`
+
 ## Compile types
 
 >`npm run dts-gen`
+
+## Publish
+
+>`npm publish`
 
 ## Installation
 
