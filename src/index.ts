@@ -7,3 +7,5 @@ export { DBServiceFactory } from './db-service-factory';
 
 export { TMongoDBSchemaObjectId } from './mongo/tmongo-db-schema-object-id';
 export { MongoDBService } from './mongo/mongo-db-service';
+
+export { SequelizeDBService } from './sequelize/sequelize-db-service';

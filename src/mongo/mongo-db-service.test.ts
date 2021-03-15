@@ -20,14 +20,14 @@ jest.mock('mongoose', () => {
   
   // eslint-disable-next-line @typescript-eslint/no-empty-function
   function TestModel(): void {}
-  TestModel.findById = function(): Promise<string> {
+  TestModel.findById = function(): Promise<string|undefined> {
     return new Promise((
       resolve: ((value?: string | PromiseLike<string> | undefined) => void)
     ): void => {
       resolve('findById');
     });
   };
-  TestModel.findOne = function(): Promise<string> {
+  TestModel.findOne = function(): Promise<string|undefined> {
     return new Promise((
       resolve: ((value?: string | PromiseLike<string> | undefined) => void)
     ): void => {
@@ -35,7 +35,7 @@ jest.mock('mongoose', () => {
     });
   };
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  TestModel.find = function(query?: {[key: string]: any}): Promise<string[]> {
+  TestModel.find = function(query?: {[key: string]: any}): Promise<string[]|undefined> {
     return new Promise((
       resolve: ((value?: string[] | PromiseLike<string[]> | undefined) => void)
     ): void => {
@@ -235,7 +235,7 @@ describe('MongoDBService', () => {
         }
       }])
         .then(() => {
-          mongoDBService.create('test')
+          mongoDBService.create('test', { test: 'test' })
             .then((entity: string) => {
               expect(entity).toBeTruthy();
               done();
@@ -246,7 +246,7 @@ describe('MongoDBService', () => {
     });
 
     it('should error if connection hasnt been called', (done: jest.DoneCallback) => {
-      mongoDBService.create('test')
+      mongoDBService.create('test', { test: 'test' })
         .then(() => done('Invoked then block'))
         .catch((err: Error) => {
           expect(err.message).toEqual('Mappings not set, connection must be called with a schema for this entity');
@@ -262,7 +262,7 @@ describe('MongoDBService', () => {
         }
       }])
         .then(() => {
-          mongoDBService.create('test2')
+          mongoDBService.create('test2', { test: 'test' })
             .then(() => done('Invoked then block'))
             .catch((err: Error) => {
               expect(err.message).toEqual('Model doesnt exist');
@@ -280,7 +280,7 @@ describe('MongoDBService', () => {
         }
       }])
         .then(() => {
-          mongoDBService.create('s')
+          mongoDBService.create('s', { test: 'test' })
             .then(() => done('Invoked then block'))
             .catch((err: Error) => {
               expect(err.message).toEqual('Failed to instantiate new entity');

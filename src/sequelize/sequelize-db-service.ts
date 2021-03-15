@@ -1,84 +1,70 @@
-import * as mongoose from 'mongoose';
+import { BuildOptions, Model, Op, Sequelize } from 'sequelize';
+import { ILogger } from '@willbell71/logger';
 
 import { IDBService } from '../idb-service';
-import { ILogger } from '@willbell71/logger';
+import { TDBServiceSchema } from '../tdb-service-schema';
 import { TDBServiceEntity } from '../tdb-service-entity';
 import { TDBServiceValue } from '../tdb-service-value';
 
-// eslint-disable-next-line @typescript-eslint/no-explicit-any
-type EntityModel = any;
+type TModelFieldType = unknown;
 
-type EntityMapping = {
-  schema: mongoose.Schema;
-  model: mongoose.Model<EntityModel>;
-};
+interface IDBModel extends Model, Record<string, TModelFieldType>  {}
+type DBModelStatic = typeof Model & {
+  new (values?: Record<string, TModelFieldType>, options?: BuildOptions): IDBModel;
+}
 
-type Mappings = {
-  [key: string]: EntityMapping;
-};
-
-type SchemaMapping = {
-  name: string;
-  schemaDefinition: mongoose.SchemaDefinition;
-};
+type Mapping = Record<string, DBModelStatic>;
 
 /**
- * DB service interface.
+ * Sequelize db service.
  */
-export class MongoDBService implements IDBService {
+export class SequelizeDBService implements IDBService {
   // logger service
   private logger?: ILogger;
-  // db schemas
-  private schema?: SchemaMapping[];
-  // db schema mapping to mongoose schema and model
-  private mappings?: Mappings;
+  // db connection
+  private dbConnection: Sequelize | null = null;
+  // models
+  private modelMapper?: Mapping;
 
   /**
-   * Connect to db and set up schema, will continue to retry until success.
+   * Connect.
    * @param {ILogger} logger - logger services provider.
    * @param {string} connection - connection string.
-   * @param {SchemaMapping[]} schema - entity names and schemas.
+   * @param {TDBServiceSchema[]} schema - entity names and schemas.
    * @return {Promise<void>} promise on connection completion.
    */
-  public connect(logger: ILogger, connection: string, schema: SchemaMapping[]): Promise<void> {
+  public async connect(logger: ILogger, connection: string, schema: TDBServiceSchema[]): Promise<void> {
     this.logger = logger;
-    this.schema = schema;    
 
-    const success: () => void = (): void => {
-      this.logger!.info('MongoDBService', 'Mongo database connected');
+    this.dbConnection = new Sequelize(connection, {
+      logging: (msg: string): void => this.logger!.verbose('SequelizeDBService', msg)
+    });
 
-      // generate mongoose schemas and mappings
-      this.mappings = {};
-      this.schema!.forEach((entity: SchemaMapping) => {
-        const {name, schemaDefinition}: {name: string; schemaDefinition: mongoose.SchemaDefinition} = entity;
-        const mSchema: mongoose.Schema = new mongoose.Schema(schemaDefinition, {timestamps: true});
-        this.mappings![name] = {
-          schema: mSchema,
-          model: mongoose.model(name, mSchema)
-        };
-      });
+    const success: () => Promise<void> = async (): Promise<void> => {
+      // create models
+      this.modelMapper = {};
+      schema.forEach((model: TDBServiceSchema) =>
+        this.modelMapper![model.name] = this.dbConnection!.define(model.name, model.schemaDefinition));
+
+      // wait for tables to be created for models
+      await this.dbConnection!.sync();
     };
 
-    return new Promise<void>((
-      resolve: ((value?: void | PromiseLike<void> | undefined) => void)
-    ): void => {
-      // need to retry incase the db isn't up yet
-      const attemptToConnect: () => void = () => {
-        this.logger!.debug('MongoDBService', 'Attempting to connect to MongoDB instance...');
-        // attempt to connect to mongo
-        mongoose.connect(connection, {
-          useNewUrlParser: true,
-          useUnifiedTopology: true,
-          useCreateIndex: true
-        })
-          .then(() => {
-            // success, finish up
-            success();
+    return new Promise((resolve: () => void) => {
+      const attemptToConnect: () => void = (): void => {
+        this.logger!.debug('SequelizeDBService', 'Attempting to connect to Sequelize instance...');
+
+        this.dbConnection!
+          .authenticate()
+          .then(async () => {
+            this.logger!.debug('SequelizeDBService', 'Connection successful');
+
+            await success();
 
             resolve();
           })
           .catch((err: Error) => {
-            this.logger!.error(`Failed to connect to mongo db - ${err.message}`);
+            this.logger!.error(`Failed to connect to sequelize - ${err.message}`);
 
             // retry again in a bit
             setTimeout(() => {
@@ -87,32 +73,32 @@ export class MongoDBService implements IDBService {
           });
       };
 
-      // make initial connection attempt immediately
+      // make initial connection attempt
       attemptToConnect();
     });
   }
 
   /**
-   * Disconnect.
-   * @return {Promise<void>} promise that resolves on disconnect, success or failure.
+   * Register shutdown handler, disconnect from db when shutting down.
+   * @return {Promise<void>} promise that resolves on connection closure.
    */
-  public disconnect(): Promise<void> {
+  public async disconnect(): Promise<void> {
     return new Promise((resolve: () => void): void => {
-      // disconnect
-      mongoose
-        .disconnect()
-        .then(() => {
-          if (this.logger) {
-            this.logger.debug('MongoDBService', 'MongoDB disconnected successfully');
-          }
-          resolve();
-        })
-        .catch((err: Error) => {
-          if (this.logger) {
-            this.logger.error(`MongoDBService failed to disconnect - ${err.message}`);
-          }
-          resolve();
-        });
+      if (this.dbConnection) {
+        this.dbConnection.close()
+          .then(() => {
+            this.logger?.debug('SequelizeDBService', 'Sequelize disconnected successfully');
+            resolve();
+          })
+          .catch((e: Error) => {
+            this.logger?.error(`Sequelize failed to disconnect - ${e.message}`);
+            resolve();
+          })
+          .finally(() => this.dbConnection = null);
+      } else {
+        this.logger?.error('No sequelize connection available to close');
+        resolve();
+      }
     });
   }
 
@@ -123,21 +109,16 @@ export class MongoDBService implements IDBService {
    * @return {Promise<TDBServiceEntity>} new entity instance.
    */
   public async create(entityType: string, values: Record<string, unknown>): Promise<TDBServiceEntity> {
-    if (this.mappings) {
-      // get model from mongoose mappings
-      const model: EntityMapping | undefined = this.mappings[entityType];
-      if (model) {
-        const EntityClass: mongoose.Model<EntityModel> = model.model;
+    if (this.modelMapper) {
+      const model: DBModelStatic | undefined = this.modelMapper[entityType];
 
-        // create a new instance
-        let entity: mongoose.Model<EntityModel>;
+      if (model) {
+        let entity: IDBModel;
         try {
-          entity = new EntityClass(values);
+          entity = await model.create(values);
         } catch (_) {
           throw (new Error('Failed to instantiate new entity'));
         }
-
-        // return instance
         return entity;
       } else {
         throw (new Error('Model doesnt exist'));
@@ -186,17 +167,11 @@ export class MongoDBService implements IDBService {
    * @return {Promise<DBServiceEntity>} entity fetched.
    */
   public async fetch(entityType: string, propName: string, value: TDBServiceValue): Promise<TDBServiceEntity> {
-    if (this.mappings) {
-      // get model from mongoose mappings
-      const model: EntityMapping = this.mappings[entityType];
+    if (this.modelMapper) {
+      // get model from mappings
+      const model: DBModelStatic | undefined = this.modelMapper[entityType];
       if (model) {
-        const entityModel: mongoose.Model<EntityModel> = model.model;
-
-        if ('id' === propName) {
-          return await entityModel.findById(value);
-        } else {
-          return await entityModel.findOne({[propName]: value});
-        }
+        return await model.findOne({ where: { [propName]: value }});
       } else {
         throw (new Error('Model doesnt exist'));
       }
@@ -213,16 +188,14 @@ export class MongoDBService implements IDBService {
    * @return {Promise<DBServiceEntity[]>} entity fetched.
    */
   public async fetchAll(entityType: string, propName?: string, value?: TDBServiceValue): Promise<TDBServiceEntity[]> {
-    if (this.mappings) {
-      // get model from mongoose mappings
-      const model: EntityMapping = this.mappings[entityType];
+    if (this.modelMapper) {
+      // get model from mappings
+      const model: DBModelStatic | undefined = this.modelMapper[entityType];
       if (model) {
-        const entityModel: mongoose.Model<EntityModel> = model.model;
-
         if (propName) {
-          return await entityModel.find({[propName]: value});
+          return await model.findAll({ where: { [propName]: { [Op.eq]: value } }});
         } else {
-          return await entityModel.find();
+          return await model.findAll();
         }
       } else {
         throw (new Error('Model doesnt exist'));
@@ -247,46 +220,53 @@ export class MongoDBService implements IDBService {
     start?: number,
     limit?: number
   ): Promise<TDBServiceEntity[]> {
-    if (this.mappings) {
-      // get model from mongoose mappings
-      const model: EntityMapping = this.mappings[entityType];
+    if (this.modelMapper) {
+      // get model from mappings
+      const model: DBModelStatic | undefined = this.modelMapper[entityType];
       if (model) {
-        const entityModel: mongoose.Model<EntityModel> = model.model;
+        // parse search and convert to syntax
+        const parsedSearch: Record<string, unknown>[] = [];
 
-        // parse search and convert to Mongoose syntax - lt -> $lt etc.
-        const parsedSearch: {[key: string]: number | string | RegExp | {$gt?: number; $lt?: number}} = {};
         for (const prop in search) {
           if (undefined === search[prop]) {}
           else if (typeof search[prop] === 'string' || typeof search[prop] === 'number' || search[prop] instanceof RegExp) {
-            parsedSearch[prop] = search[prop] as string | number | RegExp;
+            parsedSearch.push({ [prop]: search[prop] });
           } else {
-            const value: {$gt?: number; $lt?: number} = {};
-            if ((search[prop] as {gt?: number}).gt) {
-              value.$gt = (search[prop] as {gt?: number}).gt;
+            if ((search[prop] as {gt?: number}).gt && (search[prop] as {lt?: number}).lt) {
+              parsedSearch.push({ [prop]: { [Op.between]: [(search[prop] as {gt?: number}).gt, (search[prop] as {lt?: number}).lt] }});
+            } else {
+              if ((search[prop] as {gt?: number}).gt) {
+                parsedSearch.push({ [prop]: { [Op.gt]: (search[prop] as {gt?: number}).gt }});
+              }
+              if ((search[prop] as {lt?: number}).lt) {
+                parsedSearch.push({ [prop]: { [Op.lt]: (search[prop] as {lt?: number}).lt }});
+              }
             }
-            if ((search[prop] as {lt?: number}).lt) {
-              value.$lt = (search[prop] as {lt?: number}).lt;
-            }
-            parsedSearch[prop] = value;
           }
         }
 
-        this.logger!.debug('MongoDBService findAll', `Performing search for - ${JSON.stringify(parsedSearch)}`);
+        this.logger!.debug('SequelizeDBService findAll', `Performing search for - ${JSON.stringify(parsedSearch)}`);
 
-        const query: mongoose.DocumentQuery<{}[], mongoose.Document> = entityModel.find(parsedSearch);
+        const query: Record<string, unknown> = parsedSearch.length > 0 ? {
+          where: {
+            [Op.and]: parsedSearch
+          }
+        } : {};
+
         if (sort) {
-          this.logger!.debug('MongoDBService findAll', `sorting - ${JSON.stringify(sort)}`);
-          query.sort(sort);
+          this.logger!.debug('SequelizeDBService findAll', `sorting - ${JSON.stringify(sort)}`);
+          const entries: [string, number][] = Object.entries(sort);
+          query.order = [entries[0][0], entries[0][1] > 0 ? 'ASC' : 'DESC'];
         }
         if (start) {
-          this.logger!.debug('MongoDBService findAll', `skipping - ${start}`);
-          query.skip(start);
+          this.logger!.debug('SequelizeDBService findAll', `skipping - ${start}`);
+          query.offset = start;
         }
         if (limit) {
-          this.logger!.debug('MongoDBService findAll', `limiting - ${limit}`);
-          query.limit(limit);
+          this.logger!.debug('SequelizeDBService findAll', `limiting - ${limit}`);
+          query.limit = limit;
         }
-        return await query.exec();
+        return await model.findAll(query);
       } else {
         throw (new Error('Model doesnt exist'));
       }
@@ -301,7 +281,7 @@ export class MongoDBService implements IDBService {
    * @return {Promise<boolean>} success.
    */
   public async remove(entity: TDBServiceEntity): Promise<boolean> {
-    await entity.remove();
+    await entity.destroy();
     return true;
   }
 }
